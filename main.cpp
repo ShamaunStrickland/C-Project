@@ -15,13 +15,7 @@ int random(int min, int max) {
 }
 
 // Function to clear the console screen
-void clearScreen() {
-#ifdef _WIN32
-    system("cls");
-#else
-    system("clear");
-#endif
-}
+
 
 // Structure to represent a sword
 struct Sword {
@@ -34,8 +28,8 @@ struct Sword {
     }
 };
 
-// Function to simulate a fight with a monster
 bool fight(int playerAttack, int& playerHealth, int& monsterHealth) {
+    cout << "Fight initiated: Player Attack = " << playerAttack << ", Monster Health before attack = " << monsterHealth << endl;
     monsterHealth -= playerAttack;
     int monsterAttack = random(5, 15);
     playerHealth -= monsterAttack;
@@ -50,8 +44,10 @@ bool fight(int playerAttack, int& playerHealth, int& monsterHealth) {
         cout << "You defeated the monster!" << endl;
         return true;
     }
+    cout << "Fight concluded: Player Health = " << playerHealth << endl;
     return true;
 }
+
 
 // Function to simulate the boss fight
 bool bossFight(int playerHealth, int& bossHealth) {
@@ -81,25 +77,30 @@ bool bossFight(int playerHealth, int& bossHealth) {
 
 bool findChest(bool& hasHealingPotion, vector<Sword>& playerSwords, int& playerHealth, int& monsterHealth) {
     int chance = random(1, 100);
-    if (chance <= 25) { // 25% chance of finding a chest
+    cout << "Random chance for event: " << chance << endl;
+
+    if (chance <= 30) { // 30% chance of finding a chest
         cout << "You found a chest!" << endl;
         int chestType = random(1, 100);
         if (chestType <= 50 && !hasHealingPotion) { // 50% chance of getting a healing potion
             cout << "You got a healing potion!" << endl;
             hasHealingPotion = true;
-        } else { // 50% chance of getting a weapon or encountering a mimic
-            if (random(1, 100) <= 25) { // 25% chance of encountering a mimic
+        } else { // 50% chance of encountering a mimic or getting a weapon
+            if (chestType > 50 && chestType <= 75) { // 25% chance of encountering a mimic
                 cout << "You encountered a mimic!" << endl;
                 int enemyHealth = random(20, 35);
                 int enemyAttack = random(5, 10);
-                bool result = fight(enemyAttack, playerHealth, enemyHealth); // Fight with the mimic
-                if (result) {
-                    // Player defeated the mimic, so they get the chest item
-                    int potionChance = random(1, 100);
-                    if (potionChance <= 50 && !hasHealingPotion) { // 50% chance of getting a healing potion
-                        cout << "You got a healing potion from the mimic!" << endl;
+                if (!fight(enemyAttack, playerHealth, enemyHealth)) {
+                    cout << "Game Over! You were defeated by the mimic." << endl;
+                    return false;
+                } else {
+                    cout << "You defeated the mimic!" << endl;
+                    // Check for additional potion or sword
+                    if (random(1, 100) <= 50 && !hasHealingPotion) {
+                        cout << "You found a healing potion in the mimic's stash!" << endl;
                         hasHealingPotion = true;
                     } else {
+                        // Add a sword reward
                         Sword sword;
                         int rarity = random(1, 5); // Random rarity level
                         switch (rarity) {
@@ -132,12 +133,8 @@ bool findChest(bool& hasHealingPotion, vector<Sword>& playerSwords, int& playerH
                         playerSwords.push_back(sword);
                         cout << "You defeated the mimic and obtained the chest item: " << sword.name << "!" << endl;
                     }
-                    return true;
-                } else {
-                    cout << "Game Over! You were defeated by the mimic." << endl;
-                    return false;
                 }
-            } else { // 75% chance of getting a weapon
+            } else { // Remaining 25% direct chance of getting a weapon
                 Sword sword;
                 int rarity = random(1, 5); // Random rarity level
                 switch (rarity) {
@@ -167,29 +164,13 @@ bool findChest(bool& hasHealingPotion, vector<Sword>& playerSwords, int& playerH
                         sword.rarity = 5;
                         break;
                 }
-
-                // Check if the player already has a sword with the same name and rarity
-                auto existingSword = find_if(playerSwords.begin(), playerSwords.end(), [&](const Sword& s) {
-                    return s.name == sword.name && s.rarity == sword.rarity;
-                });
-
-                if (existingSword != playerSwords.end()) {
-                    // Replace the existing sword only if the new sword is of a higher rarity level
-                    if (sword.rarity > existingSword->rarity) {
-                        *existingSword = sword;
-                        cout << "You got a " << sword.name << "!" << endl;
-                    } else {
-                        cout << "You found a sword, but you already have a better one." << endl;
-                    }
-                } else {
-                    playerSwords.push_back(sword);
-                    cout << "You got a " << sword.name << "!" << endl;
-                }
+                playerSwords.push_back(sword);
+                cout << "You got a " << sword.name << "!" << endl;
             }
         }
-    } else if (chance <= 50) { // 25% chance of encountering an enemy
+    } else if (chance <= 85) { // 55% chance of encountering an enemy
         cout << "You encountered an enemy!" << endl;
-        int enemyType = random(1, 4); // Random enemy type
+        int enemyType = random(1, 4);
         int enemyHealth, enemyAttack;
         switch (enemyType) {
             case 1:
@@ -209,10 +190,10 @@ bool findChest(bool& hasHealingPotion, vector<Sword>& playerSwords, int& playerH
                 enemyAttack = random(15, 25);
                 break;
         }
-        bool result = fight(enemyAttack, playerHealth, enemyHealth); // Fight with the enemy
-        if (!result) // Player was defeated by the enemy
-            return false;
-    } else {
+        if (!fight(enemyAttack, playerHealth, enemyHealth)) {
+            return false; // Player was defeated by the enemy
+        }
+    } else { // 15% chance of finding nothing
         cout << "You found nothing." << endl;
     }
     return true;
@@ -246,6 +227,18 @@ void printEquippedRarestItem(const vector<Sword>& playerSwords, bool hasHealingP
         cout << "Player has a healing potion." << endl;
     } else {
         cout << "Player has no potions." << endl;
+    }
+}
+
+// Function to use a healing potion
+void useHealingPotion(int& playerHealth, bool& hasHealingPotion) {
+    if (hasHealingPotion) {
+        int healAmount = 50;  // Amount of health restored by the potion
+        playerHealth += healAmount;
+        cout << "You used a healing potion and restored " << healAmount << " health points." << endl;
+        hasHealingPotion = false;  // Remove the potion from inventory
+    } else {
+        cout << "You do not have any healing potions to use." << endl;
     }
 }
 
@@ -365,7 +358,7 @@ void drawTunnelLeft() {
 )";
     this_thread::sleep_for(chrono::milliseconds(200)); // Delay for 0.5 second
 
-    clearScreen(); // Move clearScreen() after animation loop
+
 }
 
 // Function to draw tunnel animation for right turn
@@ -481,7 +474,7 @@ void drawTunnelRight() {
 )";
     this_thread::sleep_for(chrono::milliseconds(200)); // Delay for 0.5 second
 
-    clearScreen(); // Move clearScreen() after animation loop
+
 }
 
 int main() {
@@ -531,11 +524,15 @@ int main() {
                         "             |              |   \n"
                         "Choice (R or L) : ";
 
-                cin >> directionChoice;
+                getline(cin, directionChoice);
                 transform(directionChoice.begin(), directionChoice.end(), directionChoice.begin(), ::tolower); // Convert to lowercase
 
                 if (directionChoice == "show inventory") {
                     printEquippedRarestItem(playerSwords, hasHealingPotion); // Call printEquippedRarestItem instead
+                    continue; // Skip the rest of the loop and ask for direction choice again
+                }
+                if (directionChoice == "Potion") {
+                    useHealingPotion(playerHealth, hasHealingPotion); // call to potion function
                     continue; // Skip the rest of the loop and ask for direction choice again
                 }
 
